@@ -2,40 +2,26 @@ package simulations
 
 import io.gatling.core.Predef._
 import io.gatling.http.Predef._
-import scala.util.Random
-import scala.io.Source
+
 import scala.concurrent.duration._
 
-class FapiToTrkcSingleNumberTrackSimulation extends Simulation {
+class TrackingNumber extends Simulation {
 
   // ===== Config via -D props =====
-  private val clientId     = sys.props.getOrElse("client_id", "l7bfeb9beb9fa8441a9f59473281a27cd1")
-  private val clientSecret = sys.props.getOrElse("client_secret", "f08c9e9b4e9d4b638725583a3d1eb2ac")
+  private val clientId     = sys.props.getOrElse("client_id", "0oatnayhm1u8kaBLZ1d7")
+  private val clientSecret = sys.props.getOrElse("client_secret", "PQLjSfLy2TYdY72TpHt81NLz24nfR5Q9meAg2Ux1k30mnkZDQQlyZRjFvEzNiCOt")
 
   // ===== HTTP protocol (target) =====
   private val httpProtocol = http
-    .baseUrl("https://apis-drt.idev.fedex.com")
+    .baseUrl("https://test-gw-cwul4s.e6nxgs.usa-e2.cloudhub.io/fxfgw-track1/fxfgw")
     .acceptHeader("application/json")
     .contentTypeHeader("application/json")
     .disableWarmUp
     .disableCaching
 
-  // ===== Helpers =====
-  private def loadTrackingNumbers(resourcePath: String): Vector[String] = {
-    val is = Option(getClass.getClassLoader.getResourceAsStream(resourcePath))
-      .getOrElse(throw new IllegalArgumentException(s"Missing resource: $resourcePath"))
-    val all = try Source.fromInputStream(is, "UTF-8").getLines().mkString("\n") finally is.close()
-    all.split("""[,\r\n]+""").toVector
-      .map(_.trim.stripPrefix("\"").stripSuffix("\""))
-      .filter(_.matches("""\d{8,12}"""))
-      .ensuring(_.nonEmpty, s"No valid tracking numbers in $resourcePath")
-  }
-
-  private val trackingNumbers = loadTrackingNumbers("tackingnumbers325.csv")
-
-  // Randomized feeder (switch to csv(...).circular for sequential)
+  // ===== Feeder for random tracking numbers =====
   private val feeder = Iterator.continually(
-    Map("trackingNumber" -> trackingNumbers(Random.nextInt(trackingNumbers.size)))
+    Map("trackingNumber" -> TrackingData.randomTrackingNumber())
   )
 
   private def buildBody(trk: String): String =
@@ -50,22 +36,24 @@ class FapiToTrkcSingleNumberTrackSimulation extends Simulation {
   private val acquireToken =
     exec(
       http("oauth_token")
-        .post("https://apis-drt.idev.fedex.com/oauth/token")
+        .post("https://fxfreight-test.oktapreview.com/oauth2/austnaxl5xDx7SWyh1d7/v1/token")
         .header("Content-Type", "application/x-www-form-urlencoded")
         .formParam("grant_type", "client_credentials")
         .formParam("client_id", clientId)
         .formParam("client_secret", clientSecret)
+        .formParam("scope", "Custom_Scope")
         .check(status.is(200))
         .check(jsonPath("$.access_token").saveAs("token"))
-        .check(jsonPath("$.expires_in").optional.saveAs("expiresIn")) // seconds
+        .check(jsonPath("$.expires_in").optional.saveAs("expiresIn"))
         .silent
     ).exec { s =>
-      val nowMs  = System.currentTimeMillis()
+      val nowMs = System.currentTimeMillis()
       val ttlSec = s("expiresIn").asOption[String].flatMap(x => util.Try(x.toLong).toOption).getOrElse(3600L)
-      val skew   = 60L
-      val expiry = nowMs + math.max(10L, (ttlSec - skew)) * 1000L
-      val token  = s("token").as[String].trim
-      s.set("token", token).set("tokenExpiryMillis", expiry)
+      val skewSec = 60L
+      val expiryMs = nowMs + math.max(10L, (ttlSec - skewSec)) * 1000L
+      val raw = s("token").as[String]
+      val token = raw.trim
+      s.set("token", token).set("tokenExpiryMillis", expiryMs)
     }
 
   // ===== Ensure token valid; refresh if expired/near-expired =====
@@ -83,24 +71,35 @@ class FapiToTrkcSingleNumberTrackSimulation extends Simulation {
     feed(feeder)
       .exec(ensureValidToken)
       .exec(
-        http("SINGLE NUMBERS FROM FAPI TO TRKC EXISTING SERVICE")
-          .post("/track/v1/trackingnumbers")
+        http("FXF SINGLE NUMBERS ROUTED FROM FAPI TO FXFT")
+          .post("/route/track/v1/trackingnumbers")
           .header("Authorization", (session: Session) => "Bearer " + session("token").as[String])
           .body(StringBody(s => buildBody(s("trackingNumber").as[String]))).asJson
           .check(status.in(200, 201, 202))
+          .check(bodyString.saveAs("responseBody"))
       )
 
-  // ===== Scenario: token once per VU, then loop =====
-  private val scn = scenario("Existing FAPI → TRKC Single Number Track")
+  // ====== Scenario: get token once per VU, then make requests ======
+  private val scn = scenario("MULE → FXFT for FXF Single Number")
     .exec(acquireToken)
-    .forever { exec(callTracking).pause(200.millis) }
+    .pause(200.millis)
+    .forever {
+      exec(callTracking).pause(200.millis)
+    }
 
-  // ===== Injection: 20 concurrent users for ~30 minutes =====
+  // ====== Injection profile: ramp to 20 users over 30s, then hold for 30m ======
+//  setUp(
+//    scn.inject(
+//      rampConcurrentUsers(0) to 20 during (30.seconds),
+//      constantConcurrentUsers(20) during (29.minutes + 30.seconds)
+//    )
+//  ).protocols(httpProtocol)
+//    .maxDuration(30.minutes)
   setUp(
     scn.inject(
-      rampConcurrentUsers(0) to 20 during (30.seconds),
-      constantConcurrentUsers(20) during (29.minutes + 30.seconds)
+      rampConcurrentUsers(0) to 5 during (30.seconds),
+      constantConcurrentUsers(10) during (20.minutes + 30.seconds)
     )
   ).protocols(httpProtocol)
-    .maxDuration(30.minutes)
+    .maxDuration(20.minutes)
 }

@@ -4,8 +4,6 @@ import io.gatling.core.Predef._
 import io.gatling.http.Predef._
 
 import scala.concurrent.duration._
-import scala.io.Source
-import scala.util.Random
 
 class MulePingSimulation extends Simulation {
 
@@ -21,21 +19,9 @@ class MulePingSimulation extends Simulation {
     .disableWarmUp
     .disableCaching
 
-  // ===== Helpers =====
-  private def loadTrackingNumbers(resourcePath: String): Vector[String] = {
-    val is = Option(getClass.getClassLoader.getResourceAsStream(resourcePath))
-      .getOrElse(throw new IllegalArgumentException(s"Missing resource: $resourcePath"))
-    val all = try Source.fromInputStream(is, "UTF-8").getLines().mkString("\n") finally is.close()
-    all.split("""[,\r\n]+""").toVector
-      .map(_.trim.stripPrefix("\"").stripSuffix("\""))
-      .filter(_.matches("""\d{8,12}"""))
-      .ensuring(_.nonEmpty, s"No valid tracking numbers in $resourcePath")
-  }
-
-  private val trackingNumbers = loadTrackingNumbers("tackingnumbers325.csv")
-
+  // ===== Feeder for random tracking numbers =====
   private val feeder = Iterator.continually(
-    Map("trackingNumber" -> trackingNumbers(Random.nextInt(trackingNumbers.size)))
+    Map("trackingNumber" -> TrackingData.randomTrackingNumber())
   )
 
   private def buildBody(trk: String): String =
