@@ -6,7 +6,7 @@ import io.gatling.http.Predef._
 import scala.concurrent.duration._
 import scala.util.Random
 
-class MuleRateQuote extends Simulation {
+class RateQuote extends Simulation {
 
   // ===== Config via -D props =====
   private val clientId     = sys.props.getOrElse("client_id", "0oatnayhm1u8kaBLZ1d7")
