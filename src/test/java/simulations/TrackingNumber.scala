@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 class TrackingNumber extends Simulation {
 
   // ===== Config via -D props =====
-  private val clientId     = sys.props.getOrElse("client_id", "0oatnayhm1u8kaBLZ1d7")
+  private val clientId = sys.props.getOrElse("client_id", "0oatnayhm1u8kaBLZ1d7")
   private val clientSecret = sys.props.getOrElse("client_secret", "PQLjSfLy2TYdY72TpHt81NLz24nfR5Q9meAg2Ux1k30mnkZDQQlyZRjFvEzNiCOt")
 
   // ===== HTTP protocol (target) =====
@@ -67,39 +67,63 @@ class TrackingNumber extends Simulation {
     }
 
   // ===== API call using the token =====
-  private val callTracking =
-    feed(feeder)
-      .exec(ensureValidToken)
-      .exec(
-        http("FXF SINGLE NUMBERS ROUTED FROM FAPI TO FXFT")
-          .post("/route/track/v1/trackingnumbers")
-          .header("Authorization", (session: Session) => "Bearer " + session("token").as[String])
-          .body(StringBody(s => buildBody(s("trackingNumber").as[String]))).asJson
-          .check(status.in(200, 201, 202))
-          .check(bodyString.saveAs("responseBody"))
-      )
 
-  // ====== Scenario: get token once per VU, then make requests ======
+  // ===== API call using the token =====
+  private val callTracking = feed(feeder).exec(ensureValidToken).exec(http("FXF SINGLE NUMBERS ROUTED FROM FAPI TO FXFT").post("/route/track/v1/trackingnumbers").header("Authorization", (session: Session) => "Bearer " + session("token").as[String]).body(StringBody(s => buildBody(s("trackingNumber").as[String]))).asJson.check(status.in(200, 201, 202)).check(bodyString.saveAs("responseBody")))
+  val stepDuration = 1.seconds
+  val requestsPerStep = 1
+// Dynamic pace calculation
+val paceDuration = 1.seconds //FiniteDuration = (stepDuration.toSeconds / requestsPerStep).seconds
+// ====== Scenario: get token once per VU, then make requests ======
+// private val scn = scenario("MULE → FXFT for FXF Single Number")
+// .exec(acquireToken) // .pause(200.millis)
+// .forever {
+// exec(callTracking).pause(200.millis).pace(paceDuration)
+// }
+// Calculate number of iterations dynamically
+val totalDurationSeconds = 30 * 60 // total planned test time in seconds
+val paceSeconds = paceDuration.toSeconds
+  val iterations = (totalDurationSeconds / paceSeconds).toInt
+
   private val scn = scenario("MULE → FXFT for FXF Single Number")
     .exec(acquireToken)
     .pause(200.millis)
-    .forever {
-      exec(callTracking).pause(200.millis)
+    .repeat(iterations) {
+      exec(callTracking)
+        .pace(paceDuration)
     }
+// Configuration
+val usersPerStep = 5
+  val Duration = 2.minutes
+  val steps = 10 // 4 * 5 = 20 users max
+val soakDuration = 5.minutes
+  val rampDownTime = 5.minutes
+  val maxUsers = usersPerStep * steps
+// ====== Hard Stop Setup ======//
+val rampUpDuration = (maxUsers / steps) * Duration
+// ====== Injection profile: ramp to 20 users over 30s, then hold for 30m ======
+// setUp( // scn.inject( // rampConcurrentUsers(0) to 20 during (30.seconds),
+// constantConcurrentUsers(20) during (29.minutes + 30.seconds) // )
+// ).protocols(httpProtocol)
+// .maxDuration(30.minutes)
+setUp(
+  scn.inject(
+// Step load: add 4 users every 3 minutes
+incrementConcurrentUsers(usersPerStep)
+  .times(steps)
+  .eachLevelLasting(Duration)
+  .startingFrom(10),
 
-  // ====== Injection profile: ramp to 20 users over 30s, then hold for 30m ======
-//  setUp(
-//    scn.inject(
-//      rampConcurrentUsers(0) to 20 during (30.seconds),
-//      constantConcurrentUsers(20) during (29.minutes + 30.seconds)
-//    )
-//  ).protocols(httpProtocol)
-//    .maxDuration(30.minutes)
-  setUp(
-    scn.inject(
-      rampConcurrentUsers(0) to 5 during (30.seconds),
-      constantConcurrentUsers(10) during (20.minutes + 30.seconds)
-    )
-  ).protocols(httpProtocol)
-    .maxDuration(20.minutes)
+// Soak phase: keep max users constant for 30 minutes
+constantConcurrentUsers(maxUsers)
+  .during(soakDuration),
+
+//Ramp-down: slowly remove users
+rampConcurrentUsers (maxUsers)
+  .to(0)
+  .during(rampDownTime)
+  )
+)
+  .protocols(httpProtocol)
+  .maxDuration(rampUpDuration + soakDuration + rampDownTime)
 }

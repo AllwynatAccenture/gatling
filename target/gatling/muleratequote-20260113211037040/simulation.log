@@ -1,0 +1,9 @@
+RUN	simulations.MuleRateQuote	muleratequote	1768338637040	 	3.11.5
+USER	MULE → Rate Quote API	START	1768338646406
+REQUEST		FXF Rate Quote Request	1768338647213	1768338659256	KO	status.find.in(200,201,202), but actually found 400
+REQUEST		FXF Rate Quote Request	1768338659486	1768338666871	KO	status.find.in(200,201,202), but actually found 400
+REQUEST		FXF Rate Quote Request	1768338667089	1768338672519	KO	status.find.in(200,201,202), but actually found 400
+REQUEST		FXF Rate Quote Request	1768338672724	1768338678284	KO	status.find.in(200,201,202), but actually found 400
+REQUEST		FXF Rate Quote Request	1768338678497	1768338690092	KO	status.find.in(200,201,202), but actually found 400
+REQUEST		FXF Rate Quote Request	1768338690310	1768338695657	KO	status.find.in(200,201,202), but actually found 400
+REQUEST		FXF Rate Quote Request	1768338695870	1768338696520	KO	status.find.in(200,201,202), but actually found 400

@@ -333,19 +333,41 @@ class RateQuote extends Simulation {
           .check(bodyString.saveAs("responseBody"))
       )
 
+
   // ====== Scenario: get token once per VU, then make requests ======
+  val paceDuration = 1.seconds
   private val scn = scenario("MULE → Rate Quote API")
     .exec(acquireToken)
-    .pause(200.millis)
+    .pause(100.millis)
     .forever {
-      exec(callRateQuote).pause(200.millis)
+      exec(callRateQuote).pace(paceDuration)
     }
+
+  // Configuration
+  val usersPerStep = 3
+  val Duration = 1.minutes
+  val steps = 10 // 4 * 5 = 20 users max
+  val soakDuration = 5.minutes
+  val rampDownTime = 5.minutes
+  val maxUsers = usersPerStep * steps
 
   setUp(
     scn.inject(
-      rampConcurrentUsers(0) to 2 during (10.seconds),
-      constantConcurrentUsers(2) during (1.minute + 50.seconds)
+      // Step load: add 4 users every 3 minutes
+      incrementConcurrentUsers(usersPerStep)
+        .times(steps)
+        .eachLevelLasting(Duration)
+        .startingFrom(3),
+
+      // Soak phase: keep max users constant for 30 minutes
+      constantConcurrentUsers(maxUsers)
+        .during(soakDuration),
+
+      //Ramp-down: slowly remove users
+      rampConcurrentUsers (maxUsers)
+        .to(0)
+        .during(rampDownTime)
     )
   ).protocols(httpProtocol)
-    .maxDuration(2.minutes)
+    .maxDuration(20.minutes)
 }

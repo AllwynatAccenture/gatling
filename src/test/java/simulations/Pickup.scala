@@ -158,20 +158,74 @@ class Pickup extends Simulation {
           .check(bodyString.saveAs("responseBody"))
       )
 
+  val stepDuration = 1.seconds
+  val requestsPerStep = 1
+
+  // Dynamic pace calculation
+  val paceDuration: FiniteDuration = (stepDuration.toSeconds / requestsPerStep).seconds
+
   // ====== Scenario: get token once per VU, then make requests ======
   private val scn = scenario("MULE → Pickup API")
     .exec(acquireToken)
     .pause(200.millis)
     .forever {
       exec(callPickup).pause(200.millis)
+        .pace(paceDuration)
     }
 
+  // Configuration
+//  val usersPerStep = 1
+//  val stepDuration = 1.minutes
+//  val steps = 3 // 4 * 5 = 20 users max
+//  val soakDuration = 2.minutes
+//  val rampDownTime = 1.minutes
+//
+//  val maxUsers = usersPerStep * steps
   // ====== Injection profile: ramp to 5 users over 30s, then hold for 20m ======
   setUp(
     scn.inject(
-      rampConcurrentUsers(0) to 2 during (10.seconds),
-      constantConcurrentUsers(2) during (1.minute + 50.seconds)
+      rampConcurrentUsers(0) to 1 during (10.seconds),
+      constantConcurrentUsers(1) during (2.minutes)
     )
+
+//    scn.inject(
+//      // Step load: add 4 users every 3 minutes
+//      incrementConcurrentUsers(usersPerStep)
+//        .times(steps)
+//        .eachLevelLasting(stepDuration)
+//        .startingFrom(1),
+//
+//      // Soak phase: keep max users constant for 30 minutes
+//      constantConcurrentUsers(maxUsers)
+//        .during(soakDuration),
+//
+//        //Ramp-down: slowly remove users
+//        rampConcurrentUsers (maxUsers)
+//        .to(0)
+//        .during(rampDownTime)
+//    )
+
+//    scn.inject(
+//      // ---- RAMP UP: 1 request over 3 minutes ----
+//      constantUsersPerSec(1.0 / 180).during(3.minutes), // 1 request / 3 min = 0.00556 TPS
+//
+//      // ---- SOAK / STEADY: 2 minutes at peak (1 request) ----
+//      constantUsersPerSec(1.0 / 120).during(2.minutes), // 1 request / 2 min = 0.00833 TPS
+//
+//      // ---- RAMP DOWN: -1 request over 3 minutes ----
+//      constantUsersPerSec(1.0 / 180).during(3.minutes) // same as ramp-up (step down)
+//    )
+
+//    scn.inject(
+//      // Ramp-up: 1 concurrent user over 3 min
+//      rampConcurrentUsers(0).to(1).during(2.minutes),
+//
+//      // Steady: hold 1 user for 2 min
+//      constantConcurrentUsers(1).during(2.minutes),
+//
+//      // Ramp-down: 1 → 0 over 3 min
+//      rampConcurrentUsers(1).to(0).during(2.minutes)
+//    )
   ).protocols(httpProtocol)
-    .maxDuration(2.minutes)
+    .maxDuration(2.minutes) // safety buffer
 }

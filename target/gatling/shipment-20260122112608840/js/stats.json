@@ -1,0 +1,169 @@
+{
+  "type": "GROUP",
+"name": "All Requests",
+"path": "",
+"pathFormatted": "group_missing-name--1146707516",
+"stats": {
+    "name": "All Requests",
+    "numberOfRequests": {
+        "total": 236,
+        "ok": 0,
+        "ko": 236
+    },
+    "minResponseTime": {
+        "total": 24,
+        "ok": 0,
+        "ko": 24
+    },
+    "maxResponseTime": {
+        "total": 1003,
+        "ok": 0,
+        "ko": 1003
+    },
+    "meanResponseTime": {
+        "total": 49,
+        "ok": 0,
+        "ko": 49
+    },
+    "standardDeviation": {
+        "total": 87,
+        "ok": 0,
+        "ko": 87
+    },
+    "percentiles1": {
+        "total": 36,
+        "ok": 0,
+        "ko": 36
+    },
+    "percentiles2": {
+        "total": 41,
+        "ok": 0,
+        "ko": 41
+    },
+    "percentiles3": {
+        "total": 78,
+        "ok": 0,
+        "ko": 78
+    },
+    "percentiles4": {
+        "total": 274,
+        "ok": 0,
+        "ko": 274
+    },
+    "group1": {
+    "name": "t < 800 ms",
+    "htmlName": "t < 800 ms",
+    "count": 0,
+    "percentage": 0.0
+},
+    "group2": {
+    "name": "800 ms <= t < 1200 ms",
+    "htmlName": "t >= 800 ms <br> t < 1200 ms",
+    "count": 0,
+    "percentage": 0.0
+},
+    "group3": {
+    "name": "t >= 1200 ms",
+    "htmlName": "t >= 1200 ms",
+    "count": 0,
+    "percentage": 0.0
+},
+    "group4": {
+    "name": "failed",
+    "htmlName": "failed",
+    "count": 236,
+    "percentage": 100.0
+},
+    "meanNumberOfRequestsPerSecond": {
+        "total": 1.9666666666666666,
+        "ok": 0,
+        "ko": 1.9666666666666666
+    }
+},
+"contents": {
+"req_fxf-freight-shi--442189272": {
+        "type": "REQUEST",
+        "name": "FXF Freight Shipment Create Request",
+"path": "FXF Freight Shipment Create Request",
+"pathFormatted": "req_fxf-freight-shi--442189272",
+"stats": {
+    "name": "FXF Freight Shipment Create Request",
+    "numberOfRequests": {
+        "total": 236,
+        "ok": 0,
+        "ko": 236
+    },
+    "minResponseTime": {
+        "total": 24,
+        "ok": 0,
+        "ko": 24
+    },
+    "maxResponseTime": {
+        "total": 1003,
+        "ok": 0,
+        "ko": 1003
+    },
+    "meanResponseTime": {
+        "total": 49,
+        "ok": 0,
+        "ko": 49
+    },
+    "standardDeviation": {
+        "total": 87,
+        "ok": 0,
+        "ko": 87
+    },
+    "percentiles1": {
+        "total": 36,
+        "ok": 0,
+        "ko": 36
+    },
+    "percentiles2": {
+        "total": 41,
+        "ok": 0,
+        "ko": 41
+    },
+    "percentiles3": {
+        "total": 78,
+        "ok": 0,
+        "ko": 78
+    },
+    "percentiles4": {
+        "total": 274,
+        "ok": 0,
+        "ko": 274
+    },
+    "group1": {
+    "name": "t < 800 ms",
+    "htmlName": "t < 800 ms",
+    "count": 0,
+    "percentage": 0.0
+},
+    "group2": {
+    "name": "800 ms <= t < 1200 ms",
+    "htmlName": "t >= 800 ms <br> t < 1200 ms",
+    "count": 0,
+    "percentage": 0.0
+},
+    "group3": {
+    "name": "t >= 1200 ms",
+    "htmlName": "t >= 1200 ms",
+    "count": 0,
+    "percentage": 0.0
+},
+    "group4": {
+    "name": "failed",
+    "htmlName": "failed",
+    "count": 236,
+    "percentage": 100.0
+},
+    "meanNumberOfRequestsPerSecond": {
+        "total": 1.9666666666666666,
+        "ok": 0,
+        "ko": 1.9666666666666666
+    }
+}
+    }
+}
+
+}
